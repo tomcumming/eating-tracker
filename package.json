@@ -1,0 +1,7 @@
+{
+  "scripts": {
+    "serve": "http-server",
+    "check": "tsc -p .",
+    "format": "prettier --write tsconfig.json package.json index.html script"
+  }
+}
