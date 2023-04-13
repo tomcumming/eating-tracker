@@ -15,3 +15,17 @@ export function queryOrDie(root, type, query) {
 export function removeChildren(elem) {
   while (elem.firstChild) elem.firstChild.remove();
 }
+
+/**
+ * @param {string} msg
+ * @param {string} [def]
+ */
+export function promptNumber(msg, def) {
+  const str = prompt(msg, def);
+  if (str !== null) {
+    const n = parseFloat(str);
+    if (isFinite(n)) return n;
+    else alert("Expected a number");
+  }
+  return null;
+}

@@ -1,5 +1,5 @@
-import { dbUpdateEventName, getFoods } from "../db.js";
-import { queryOrDie, removeChildren } from "../utils.js";
+import { dbUpdateEventName, getFoods, setFood } from "../db.js";
+import { promptNumber, queryOrDie, removeChildren } from "../utils.js";
 
 class Foods extends HTMLElement {
   connectedCallback() {
@@ -11,16 +11,16 @@ class Foods extends HTMLElement {
       this.#addNewClicked
     );
 
-    this.addEventListener(dbUpdateEventName, this.#dataRefreshed);
+    globalThis.addEventListener(dbUpdateEventName, this.#dataRefreshed);
 
     this.#dataRefreshed();
   }
 
   disconnectedCallback() {
-    // TODO?
+    globalThis.removeEventListener(dbUpdateEventName, this.#dataRefreshed);
   }
 
-  async #dataRefreshed() {
+  #dataRefreshed = async () => {
     const foods = await getFoods();
 
     const list = queryOrDie(this, HTMLUListElement, ":scope > *.foods-list");
@@ -31,27 +31,60 @@ class Foods extends HTMLElement {
     } else {
       list.classList.remove("empty");
 
-      for (const food of foods) {
+      foods.forEach((food, idx) => {
         // Reverse order: newest at top
-        const li = document.createElement("li");
-        li.innerHTML = `<button class="name">${food.name}</button>
-        <div>
-          <button class="cals">Cals: ${food.cals}</button>
-          <button class="cals">Carbs: ${food.carbs}</button>
-        </div>`;
-
-        li.insertBefore(li, list.firstChild);
-      }
+        const li = renderFoodItem(idx, food, (id, food) => setFood(id, food));
+        list.insertBefore(li, list.firstChild);
+      });
     }
+  };
 
-    console.log(foods, list);
-  }
-
-  #addNewClicked() {
+  #addNewClicked = () => {
     const name = prompt("New food name");
+    if (name !== null) setFood(undefined, { name, cals: 0, carbs: 0 });
+  };
+}
 
-    console.log("Adding ", name);
-  }
+/**
+ * @param {Food} food
+ * @param {number} id
+ * @param {(id: number, food: Food) => void} onEdit
+ */
+function renderFoodItem(id, food, onEdit) {
+  const li = document.createElement("li");
+  li.classList.add("food");
+  li.innerHTML = `<button data-id="${id}" class="name">${food.name}</button>
+    <div>
+      <button class="cals">Cals: ${food.cals}</button>
+      <button class="carbs">Carbs: ${food.carbs}</button>
+    </div>`;
+
+  const nameButton = queryOrDie(li, HTMLButtonElement, ":scope > button.name");
+  const calsButton = queryOrDie(
+    li,
+    HTMLButtonElement,
+    ":scope > div > button.cals"
+  );
+  const carbsButton = queryOrDie(
+    li,
+    HTMLButtonElement,
+    ":scope > div > button.carbs"
+  );
+
+  nameButton.addEventListener("click", () => {
+    const name = prompt(`Rename '${food.name}'`);
+    if (name !== null) onEdit(id, { ...food, name });
+  });
+  calsButton.addEventListener("click", () => {
+    const cals = promptNumber(`New Cals value`);
+    if (cals !== null) onEdit(id, { ...food, cals });
+  });
+  carbsButton.addEventListener("click", () => {
+    const carbs = promptNumber(`New Carbs value`);
+    if (carbs !== null) onEdit(id, { ...food, carbs });
+  });
+
+  return li;
 }
 
 customElements.define("et-foods", Foods);
